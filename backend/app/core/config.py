@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # Application Settings
     APP_NAME: str = "NVC AI Facilitator"
-    APP_VERSION: str = "1.4.0-root-ui"
+    APP_VERSION: str = "1.4.1-fix-none-bug"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
     

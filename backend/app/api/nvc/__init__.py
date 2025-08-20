@@ -163,18 +163,23 @@ def generate_contextual_suggestions(step: str, user_message: str, context: dict 
     if not context:
         context = analyze_user_context(user_message)
     
-    person = context.get("person", "they")
-    action = context.get("action", "behaved")
-    setting = context.get("setting", "this situation")
+    # Use safe defaults and handle None values
+    person = context.get("person") or "colleague"
+    action = context.get("action") or "behaved"
+    setting = context.get("setting") or "situation"
+    
+    # Remove "my" prefix when person is None or unclear
+    person_phrase = person if person in ["colleague", "coworker", "teammate", "friend", "partner"] else "they"
+    possessive_person = f"my {person}" if person not in ["they", "someone"] else person
     
     suggestions = {
         "observation": [
-            f"I noticed that my {person} interrupted me three times during our {setting}",
-            f"I observed that my {person} didn't acknowledge my contributions",
-            f"What happened was that my {person} spoke over me while I was presenting"
+            f"I noticed that {possessive_person} interrupted me three times during our {setting}",
+            f"I observed that {possessive_person} didn't acknowledge my contributions", 
+            f"What happened was that {possessive_person} spoke over me while I was presenting"
         ],
         "feeling": [
-            f"I feel frustrated when my {person} interrupts me",
+            f"I feel frustrated when {person_phrase} interrupts me",
             f"I'm feeling unheard and undervalued in our {setting}",
             f"I feel disappointed when my ideas aren't acknowledged"
         ],
