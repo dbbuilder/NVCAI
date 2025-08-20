@@ -70,3 +70,6 @@ dist/
 build/
 *.tgz
 *.tar.gz
+
+# Claude Code memory (local secrets and project info)
+.claude_memory/

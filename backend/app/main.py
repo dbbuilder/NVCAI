@@ -58,11 +58,21 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 @app.get("/test")
 async def serve_test_ui():
     """Serve the test UI HTML file."""
-    test_ui_path = "/mnt/d/dev2/nvcai/test_ui.html"
+    # Look for test_ui.html in the project root directory
+    current_dir = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    test_ui_path = os.path.join(current_dir, "test_ui.html")
+    
     if os.path.exists(test_ui_path):
         return FileResponse(test_ui_path, media_type="text/html")
     else:
-        return JSONResponse({"error": "Test UI file not found"}, status_code=404)
+        # Fallback: look in current directory
+        fallback_path = "test_ui.html"
+        if os.path.exists(fallback_path):
+            return FileResponse(fallback_path, media_type="text/html")
+        return JSONResponse({
+            "error": "Test UI file not found", 
+            "searched_paths": [test_ui_path, fallback_path]
+        }, status_code=404)
 
 
 @app.exception_handler(Exception)
