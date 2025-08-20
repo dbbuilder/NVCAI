@@ -13,9 +13,15 @@ router = APIRouter()
 
 class ConversationRequest(BaseModel):
     message: str
+    email: str
+    password: str
     context: Optional[str] = None
     nvc_step: Optional[str] = None  # observation, feeling, need, request
     conversation_history: Optional[List[str]] = []
+
+class AuthRequest(BaseModel):
+    email: str
+    password: str
 
 class ConversationResponse(BaseModel):
     response: str  # Main AI response (maps to ai_response)
@@ -26,6 +32,15 @@ class ConversationResponse(BaseModel):
     vocabulary_options: List[str] = []
     nvc_summary: Optional[str] = None
     conversation_complete: bool = False
+
+# Authentication functions
+def validate_credentials(email: str, password: str) -> bool:
+    """Validate user credentials - simple password check for now"""
+    return password == "NVCRocks!"
+
+def is_authenticated(request: ConversationRequest) -> bool:
+    """Check if the request contains valid authentication"""
+    return validate_credentials(request.email, request.password)
 
 # Initialize OpenAI client
 def get_openai_client():
@@ -337,6 +352,23 @@ Return only: true or false"""
         logger.warning(f"AI completion detection failed: {e}, using pattern matching")
         return should_complete_conversation(conversation_history)
 
+def check_request_clarification_needed(conversation_history: List[str], current_message: str) -> bool:
+    """Check if we need to ask clarifying questions after a request"""
+    if len(conversation_history) < 3:
+        return False
+    
+    # Look for request keywords in recent messages
+    recent_messages = " ".join(conversation_history[-3:]).lower()
+    request_indicators = ["would you", "could you", "please", "willing", "request"]
+    
+    has_recent_request = any(indicator in recent_messages for indicator in request_indicators)
+    
+    # Check if we've already done clarification
+    clarification_keywords = ["why", "how", "what if", "when", "where", "realistic", "workable"]
+    has_clarification = any(keyword in recent_messages for keyword in clarification_keywords)
+    
+    return has_recent_request and not has_clarification
+
 def should_complete_conversation(conversation_history: List[str]) -> bool:
     """Determine if the conversation has covered all NVC steps and should complete."""
     # Check if user explicitly wants to complete
@@ -345,12 +377,13 @@ def should_complete_conversation(conversation_history: List[str]) -> bool:
         completion_phrases = [
             "show me the summary", "i'm ready to complete", "can we finish", 
             "give me the nvc summary", "i'm done", "that's enough",
-            "create my nvc statement", "show me my nvc framework"
+            "create my nvc statement", "show me my nvc framework",
+            "no more to discuss", "nothing else", "i'm satisfied"
         ]
         if any(phrase in last_message for phrase in completion_phrases):
             return True
     
-    if len(conversation_history) < 8:  # Need more back-and-forth for thorough conversation
+    if len(conversation_history) < 10:  # Need even more conversation for thorough exploration
         return False
     
     # Check if we have evidence of all four steps in proper sequence
@@ -375,44 +408,92 @@ def should_complete_conversation(conversation_history: List[str]) -> bool:
     
     return has_observation and has_feeling and has_need and has_specific_request and has_depth
 
+def extract_user_content_from_conversation(conversation_history: List[str]) -> dict:
+    """Extract actual observations, feelings, needs, and requests from conversation"""
+    user_messages = []
+    # Filter for user messages (every other message starting from first)
+    for i in range(0, len(conversation_history), 2):
+        if i < len(conversation_history):
+            user_messages.append(conversation_history[i])
+    
+    all_user_text = " ".join(user_messages).lower()
+    
+    # Extract observations (look for specific details mentioned)
+    observations = []
+    for msg in user_messages:
+        if any(word in msg.lower() for word in ["noticed", "saw", "heard", "didn't", "said", "did"]):
+            observations.append(msg)
+    
+    # Extract feelings
+    feelings = []
+    for msg in user_messages:
+        if any(word in msg.lower() for word in ["feel", "feeling", "frustrated", "sad", "angry", "unheard", "unappreciated"]):
+            feelings.append(msg)
+    
+    # Extract needs
+    needs = []
+    for msg in user_messages:
+        if any(word in msg.lower() for word in ["need", "want", "value", "respect", "recognition", "understanding"]):
+            needs.append(msg)
+    
+    # Extract requests
+    requests = []
+    for msg in user_messages:
+        if any(phrase in msg.lower() for phrase in ["would you", "could you", "please", "willing"]):
+            requests.append(msg)
+    
+    return {
+        "observations": observations,
+        "feelings": feelings,
+        "needs": needs,
+        "requests": requests,
+        "context": context
+    }
+
 def generate_nvc_summary(conversation_history: List[str], context: dict) -> str:
-    """Generate a complete NVC statement summary and action guidance."""
-    person = context.get("person", "the other person")
-    setting = context.get("setting", "this situation")
-    action = context.get("action", "interrupted me")
+    """Generate a personalized NVC statement summary from actual conversation content."""
+    content = extract_user_content_from_conversation(conversation_history)
+    
+    # Use actual content from conversation
+    observation_text = content["observations"][0] if content["observations"] else "the situation that occurred"
+    feeling_text = content["feelings"][0] if content["feelings"] else "I feel concerned"
+    need_text = content["needs"][0] if content["needs"] else "I need understanding"
+    request_text = content["requests"][0] if content["requests"] else "Would you be willing to work with me on this"
     
     return f"""
-## Your Complete NVC Statement
+## Your Personalized NVC Statement
 
-### 🔍 **Observation** (Facts without judgment)
-*"I noticed that my {person} {action} during our {setting}."*
+### 🔍 **Observation** (What you noticed)
+*"{observation_text}"*
 
-### 💭 **Feelings** (Your emotional response)
-*"I feel frustrated and unheard when this happens."*
+### 💭 **Feelings** (Your emotional response)  
+*"{feeling_text}"*
 
-**Other feeling options you might relate to:**
-• Disappointed when my ideas aren't heard
-• Undervalued when my contributions are overlooked  
-• Concerned about our communication patterns
+**Additional feelings that may resonate:**
+• Disappointed when contributions aren't acknowledged
+• Undervalued when efforts go unrecognized
+• Hopeful that communication can improve
 • Hopeful that we can find a better way to collaborate
 
-### ❤️ **Needs** (Universal human values)
-*"I need respect and recognition for my contributions."*
+### ❤️ **Needs** (What you value)
+*"{need_text}"*
 
-**Core needs at stake:**
-• **Respect** - Having my voice valued and heard
-• **Recognition** - Acknowledgment of my ideas and efforts
+**Universal needs that may apply:**
+• **Respect** - Having your voice valued and heard
+• **Recognition** - Acknowledgment of your ideas and efforts  
 • **Collaboration** - Working together as equals
 • **Understanding** - Feeling seen and appreciated
-• **Autonomy** - Freedom to express my thoughts fully
+• **Connection** - Meaningful relationships and communication
 
-### 🤝 **Request** (Specific, doable action)
-*"Would you be willing to let me finish my thoughts before responding?"*
+### 🤝 **Request** (Your specific ask)
+*"{request_text}"*
 
-**Alternative requests:**
-• "Could we establish a signal when I have something to add?"
-• "Would you help me ensure everyone gets heard in meetings?"
-• "Could we check in regularly about our communication style?"
+**Ways to refine your request:**
+• Make it specific and doable
+• Choose good timing
+• Express it positively ("Would you..." vs "Don't...")
+• Connect it to your needs
+• Be open to negotiation
 
 ---
 
@@ -442,11 +523,23 @@ def generate_nvc_summary(conversation_history: List[str], context: dict) -> str:
 *Remember: NVC is about connection, not compliance. The goal is mutual understanding and finding solutions that meet everyone's needs.*
 """
 
+@router.post("/auth")
+async def authenticate(request: AuthRequest):
+    """Simple authentication endpoint"""
+    if validate_credentials(request.email, request.password):
+        return {"authenticated": True, "message": "Welcome to NVC AI Facilitator"}
+    else:
+        raise HTTPException(status_code=401, detail="Invalid credentials. Please check your password.")
+
 @router.post("/conversation", response_model=ConversationResponse)
 async def nvc_conversation(request: ConversationRequest):
     """
-    NVC AI conversation endpoint - back to working basics.
+    NVC AI conversation endpoint with authentication.
     """
+    # Check authentication first
+    if not is_authenticated(request):
+        raise HTTPException(status_code=401, detail="Authentication required. Please provide valid credentials.")
+    
     try:
         # Use OpenAI if available, otherwise fallback
         client = get_openai_client()
@@ -532,29 +625,51 @@ async def nvc_conversation(request: ConversationRequest):
         current_step = detect_nvc_step_with_ai(request.message, conversation_history)
         next_step = get_next_nvc_step(current_step)
         
-        # Simple step responses
-        step_responses = {
-            "observation": {
-                "ai_response": "I hear you describing what you observed. Can you tell me more about what you're feeling about this situation?",
-                "guidance": "Great start with observation! Try to stick to facts without evaluation.",
-                "example": "Instead of 'He was being rude' try 'He interrupted me twice during our conversation'"
-            },
-            "feeling": {
-                "ai_response": "Thank you for sharing your feelings. What do you think you need in this situation?",
-                "guidance": "You're expressing feelings - this is important for connection.",
-                "example": "Try using feeling words like: frustrated, excited, worried, grateful, confused"
-            },
-            "need": {
-                "ai_response": "I understand your needs better now. What specific request could you make to meet this need?",
-                "guidance": "You're identifying your needs - this gets to the heart of NVC.",
-                "example": "Universal needs might include: understanding, respect, connection, autonomy, safety"
-            },
-            "request": {
-                "ai_response": "That sounds like a clear request. How do you think this request might help meet your needs?",
-                "guidance": "You're making a request - make sure it's specific and doable.",
-                "example": "Make requests specific and positive: 'Would you be willing to listen for 5 minutes?' rather than 'Don't interrupt me'"
+        # Check if we need request clarification
+        needs_request_clarification = check_request_clarification_needed(conversation_history, request.message)
+        
+        # Enhanced step responses with refining questions
+        if needs_request_clarification:
+            # Ask clarifying questions about the request
+            clarification_questions = [
+                "What would make this request realistic and workable for both of you?",
+                "When would be the best time to make this request?", 
+                "How could you phrase this request in a way that opens dialogue?",
+                "What might help the other person feel willing to consider your request?"
+            ]
+            import random
+            selected_question = random.choice(clarification_questions)
+            
+            step_responses = {
+                "request": {
+                    "ai_response": f"Let me help you refine that request. {selected_question} Also, is there anything else about this situation you'd like to explore before we create your complete NVC framework?",
+                    "guidance": "Refining your request - making it specific and considerate.",
+                    "example": "Consider timing, wording, and what would make it easy for them to say yes"
+                }
             }
-        }
+        else:
+            step_responses = {
+                "observation": {
+                    "ai_response": "I hear you describing what you observed. Can you help me understand more details? What exactly did you see or hear that concerns you?",
+                    "guidance": "Great start with observation! Let's get more specific facts.",
+                    "example": "Instead of 'He was being rude' try 'He interrupted me twice and didn't acknowledge my ideas'"
+                },
+                "feeling": {
+                    "ai_response": "Thank you for sharing your feelings. Can you tell me more about what emotions come up when you think about this situation? What's the strongest feeling you notice?",
+                    "guidance": "You're expressing feelings - let's explore them deeper.",
+                    "example": "Try specific feelings: frustrated, disappointed, hurt, worried, hopeful"
+                },
+                "need": {
+                    "ai_response": "I understand your needs better now. What would it look like if this need was met? How would you feel different?",
+                    "guidance": "You're identifying your needs - let's explore what meeting them would mean.",
+                    "example": "Universal needs: understanding, respect, connection, autonomy, recognition, collaboration"
+                },
+                "request": {
+                    "ai_response": "That sounds like a clear request. How realistic do you think this request is? What might make the other person willing to consider it?",
+                    "guidance": "You're making a request - let's make it as effective as possible.",
+                    "example": "Make requests specific, positive, and considerate: 'Would you be willing to...' works better than 'Don't...'"
+                }
+            }
         
         response_data = step_responses.get(next_step, {
             "ai_response": "Let's work through this together step by step.",
