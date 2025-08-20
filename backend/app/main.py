@@ -111,57 +111,38 @@ async def health_check() -> dict:
     }
 
 
-@app.get("/", response_class=Response)
+@app.get("/")
 async def root():
-    """Root endpoint with basic API information and UI link."""
-    html_content = f"""
-    <html>
-    <head><title>NVC AI Facilitator</title></head>
-    <body style="font-family: Arial, sans-serif; margin: 40px; text-align: center;">
-        <h1>🤝 NVC AI Facilitator</h1>
-        <p>Version: {settings.APP_VERSION}</p>
-        <p><strong>API Endpoints:</strong></p>
-        <ul style="display: inline-block; text-align: left;">
-            <li><a href="/health">Health Check</a></li>
-            <li><a href="{settings.API_V1_STR}/docs">API Documentation</a></li>
-            <li><a href="/test">Web Interface</a> (if deployed)</li>
-        </ul>
-        <hr>
-        <h2>Quick Test</h2>
-        <textarea id="msg" placeholder="Try: I'm frustrated with my coworker" style="width: 300px; height: 60px;"></textarea><br><br>
-        <button onclick="testAPI()" style="padding: 10px 20px; font-size: 16px;">Get NVC Guidance</button>
-        <div id="result" style="margin-top: 20px; padding: 20px; background: #f0f0f0; border-radius: 10px; display: none;"></div>
+    """Root endpoint - serve the full NVC UI directly."""
+    # Serve the same UI as /test endpoint at the root
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+    test_ui_path = os.path.join(project_root, "test_ui.html")
+    
+    logger.info(f"Root endpoint looking for UI at: {test_ui_path}")
+    
+    if os.path.exists(test_ui_path):
+        return FileResponse(test_ui_path, media_type="text/html")
+    else:
+        # Fallback paths
+        fallback_paths = [
+            "test_ui.html",
+            "../test_ui.html", 
+            "../../test_ui.html",
+            "/app/test_ui.html"
+        ]
         
-        <script>
-        async function testAPI() {{
-            const msg = document.getElementById('msg').value;
-            if (!msg) return;
-            
-            const result = document.getElementById('result');
-            result.style.display = 'block';
-            result.innerHTML = 'Processing...';
-            
-            try {{
-                const response = await fetch('{settings.API_V1_STR}/nvc/conversation', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ message: msg, conversation_history: [] }})
-                }});
-                const data = await response.json();
-                result.innerHTML = `
-                    <strong>AI Response:</strong> ${{data.ai_response}}<br>
-                    <strong>Guidance:</strong> ${{data.guidance}}<br>
-                    <strong>NVC Step:</strong> ${{data.suggested_nvc_step}}
-                `;
-            }} catch (error) {{
-                result.innerHTML = `Error: ${{error.message}}`;
-            }}
-        }}
-        </script>
-    </body>
-    </html>
-    """
-    return Response(content=html_content, media_type="text/html")
+        for fallback_path in fallback_paths:
+            if os.path.exists(fallback_path):
+                logger.info(f"Root endpoint found UI at fallback path: {fallback_path}")
+                return FileResponse(fallback_path, media_type="text/html")
+        
+        # If no UI file found, return basic info
+        return JSONResponse({
+            "message": "NVC AI Facilitator API",
+            "version": settings.APP_VERSION,
+            "docs_url": f"{settings.API_V1_STR}/docs",
+            "error": "UI file not found - showing API info instead"
+        })
 
 
 if __name__ == "__main__":
