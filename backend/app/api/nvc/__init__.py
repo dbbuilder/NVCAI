@@ -378,9 +378,14 @@ def should_complete_conversation(conversation_history: List[str]) -> bool:
             "show me the summary", "i'm ready to complete", "can we finish", 
             "give me the nvc summary", "i'm done", "that's enough",
             "create my nvc statement", "show me my nvc framework",
-            "no more to discuss", "nothing else", "i'm satisfied"
+            "no more to discuss", "nothing else", "i'm satisfied",
+            "i am complete", "i am done", "print the summary", 
+            "please print the summary", "generate the summary",
+            "create the summary", "finish this", "wrap this up",
+            "complete", "summary please", "give me my summary"
         ]
         if any(phrase in last_message for phrase in completion_phrases):
+            logger.info(f"Explicit completion requested with message: {last_message}")
             return True
     
     if len(conversation_history) < 10:  # Need even more conversation for thorough exploration
@@ -550,8 +555,8 @@ async def nvc_conversation(request: ConversationRequest):
                 conversation_history = request.conversation_history or []
                 conversation_history.append(request.message)
                 
-                # Use AI to check if conversation should complete
-                if ai_should_complete_conversation(conversation_history):
+                # Check for explicit completion requests FIRST (before AI)
+                if should_complete_conversation(conversation_history):
                     context = analyze_user_context(request.message)
                     nvc_summary = generate_nvc_summary(conversation_history, context)
                     
@@ -605,8 +610,8 @@ async def nvc_conversation(request: ConversationRequest):
         conversation_history = request.conversation_history or []
         conversation_history.append(request.message)
         
-        # Use AI to check if conversation should complete
-        if ai_should_complete_conversation(conversation_history):
+        # Check for explicit completion requests FIRST (before AI)
+        if should_complete_conversation(conversation_history):
             context = analyze_user_context(request.message)
             nvc_summary = generate_nvc_summary(conversation_history, context)
             

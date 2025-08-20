@@ -332,18 +332,23 @@
         }
         
         .auth-button {
-            padding: 12px 20px;
+            padding: 15px 25px;
             background: #007bff;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 1em;
+            font-size: 1.1em;
+            font-weight: bold;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+            margin-top: 5px;
         }
         
         .auth-button:hover {
             background: #0056b3;
+            box-shadow: 0 6px 16px rgba(0,123,255,0.4);
+            transform: translateY(-2px);
         }
         
         .voice-button {
@@ -504,7 +509,7 @@
                     type="password" 
                     id="passwordInput" 
                     class="auth-input" 
-                    placeholder="Enter password (hint: NVCRocks!)"
+                    placeholder="Enter password"
                 >
                 <button onclick="authenticate()" class="auth-button" id="authButton">Login</button>
             </div>
