@@ -295,18 +295,22 @@ def ai_should_complete_conversation(conversation_history: List[str]) -> bool:
     """Use AI to determine if all NVC steps have been meaningfully covered."""
     try:
         client = get_openai_client()
-        if not client or len(conversation_history) < 4:
+        if not client or len(conversation_history) < 8:  # Require more conversation
             return should_complete_conversation(conversation_history)
         
-        prompt = f"""Review this NVC conversation and determine if the user has genuinely worked through all 4 steps:
+        prompt = f"""Review this NVC conversation and determine if the user has THOROUGHLY worked through all 4 steps:
 
 Conversation: {conversation_history}
 
-Have they provided:
-1. A clear observation (facts without judgment)?
-2. Genuine feelings (not thoughts disguised as feelings)?
-3. Identified underlying needs?
-4. Made a specific, doable request?
+STRICT CRITERIA - ALL must be met:
+1. Clear, specific observation stated without judgment or evaluation
+2. Genuine feelings expressed (not thoughts disguised as feelings)
+3. Underlying needs clearly identified and explored
+4. Specific, actionable request made that connects to their needs
+5. User has had multiple opportunities to refine their NVC statement
+6. Conversation shows depth of exploration, not just surface mentions
+
+Only return 'true' if the user has genuinely explored each step thoroughly and appears ready for a complete NVC framework. If they've only briefly touched on steps or could benefit from more exploration, return 'false'.
 
 Return only: true or false"""
 
@@ -335,7 +339,18 @@ Return only: true or false"""
 
 def should_complete_conversation(conversation_history: List[str]) -> bool:
     """Determine if the conversation has covered all NVC steps and should complete."""
-    if len(conversation_history) < 5:  # Need more back-and-forth for full conversation
+    # Check if user explicitly wants to complete
+    if conversation_history:
+        last_message = conversation_history[-1].lower()
+        completion_phrases = [
+            "show me the summary", "i'm ready to complete", "can we finish", 
+            "give me the nvc summary", "i'm done", "that's enough",
+            "create my nvc statement", "show me my nvc framework"
+        ]
+        if any(phrase in last_message for phrase in completion_phrases):
+            return True
+    
+    if len(conversation_history) < 8:  # Need more back-and-forth for thorough conversation
         return False
     
     # Check if we have evidence of all four steps in proper sequence
@@ -351,8 +366,14 @@ def should_complete_conversation(conversation_history: List[str]) -> bool:
         "i request", "i ask that", "could we", "will you"
     ])
     
-    # Only complete if all steps are present AND there's a specific request
-    return has_observation and has_feeling and has_need and has_specific_request
+    # Require evidence of multiple expressions and refinement
+    feeling_count = sum(1 for word in ["feel", "feeling", "frustrated", "sad", "angry", "excited", "worried", "grateful"] if word in all_messages)
+    need_count = sum(1 for word in ["need", "value", "respect", "understanding", "connection", "autonomy", "safety"] if word in all_messages)
+    
+    # Only complete if all steps are present AND there's evidence of exploration (multiple feeling/need mentions)
+    has_depth = feeling_count >= 2 and need_count >= 2
+    
+    return has_observation and has_feeling and has_need and has_specific_request and has_depth
 
 def generate_nvc_summary(conversation_history: List[str], context: dict) -> str:
     """Generate a complete NVC statement summary and action guidance."""
