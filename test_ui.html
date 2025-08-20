@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVC AI Facilitator - Test Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+            padding: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .nvc-steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .step {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .step.active {
+            border-color: #667eea;
+            background: #e8f2ff;
+        }
+        
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: bold;
+        }
+        
+        .step-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .step-description {
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .conversation-area {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 200px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        
+        .user-message {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .ai-message {
+            background: white;
+            border: 1px solid #ddd;
+        }
+        
+        .guidance-box {
+            background: #e8f5e8;
+            border-left: 4px solid #28a745;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .guidance-title {
+            font-weight: 600;
+            color: #155724;
+            margin-bottom: 8px;
+        }
+        
+        .guidance-text {
+            color: #155724;
+        }
+        
+        .example-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .example-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        
+        .example-text {
+            color: #856404;
+        }
+        
+        .suggestions-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .suggestions-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .suggestion-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .suggestion-btn {
+            background: #e8f2ff;
+            border: 1px solid #667eea;
+            color: #667eea;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+        }
+        
+        .suggestion-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .vocabulary-section {
+            margin-top: 15px;
+        }
+        
+        .vocabulary-title {
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 10px;
+        }
+        
+        .vocabulary-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        
+        .vocabulary-btn {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            color: #856404;
+            padding: 6px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 0.8em;
+            transition: all 0.3s ease;
+        }
+        
+        .vocabulary-btn:hover {
+            background: #ffc107;
+            color: white;
+        }
+        
+        .nvc-summary {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+            border: 2px solid #28a745;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.1);
+        }
+        
+        .summary-title {
+            color: #155724;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .summary-content {
+            color: #155724;
+            line-height: 1.7;
+            white-space: pre-line;
+        }
+        
+        .summary-content h2 {
+            color: #2c5530;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 8px;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        
+        .summary-content h3 {
+            color: #2c5530;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+        
+        .summary-content ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .summary-content li {
+            margin: 5px 0;
+        }
+        
+        .summary-content strong {
+            color: #1e4620;
+            font-weight: 600;
+        }
+        
+        .summary-content em {
+            font-style: italic;
+            background: rgba(40, 167, 69, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        .conversation-complete-message {
+            text-align: center;
+            padding: 15px;
+            background: #d4edda;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: 600;
+            color: #155724;
+        }
+        
+        .input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .message-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        .message-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .send-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        
+        .send-button:hover {
+            background: #5a6fd8;
+        }
+        
+        .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.loading {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>NVC AI Facilitator</h1>
+            <p>Practice Non-Violent Communication with AI guidance</p>
+        </div>
+        
+        <div class="nvc-steps">
+            <div class="step" id="observation-step">
+                <div class="step-number">1</div>
+                <div class="step-title">Observation</div>
+                <div class="step-description">What did you see or hear?</div>
+            </div>
+            <div class="step" id="feeling-step">
+                <div class="step-number">2</div>
+                <div class="step-title">Feeling</div>
+                <div class="step-description">How do you feel?</div>
+            </div>
+            <div class="step" id="need-step">
+                <div class="step-number">3</div>
+                <div class="step-title">Need</div>
+                <div class="step-description">What do you need?</div>
+            </div>
+            <div class="step" id="request-step">
+                <div class="step-number">4</div>
+                <div class="step-title">Request</div>
+                <div class="step-description">What would you like to request?</div>
+            </div>
+        </div>
+        
+        <div class="conversation-area" id="conversation">
+            <div class="ai-message">
+                <strong>NVC AI Facilitator:</strong> Hello! I'm here to help you practice Non-Violent Communication. 
+                Share a situation you'd like to work through, and I'll guide you through the four steps of NVC: 
+                Observation, Feelings, Needs, and Requests. What would you like to talk about?
+            </div>
+        </div>
+        
+        <div id="status" class="status" style="display: none;"></div>
+        
+        <div id="suggestions" class="suggestions-section" style="display: none;">
+            <div class="suggestions-title">✨ Suggested Responses</div>
+            <div id="suggestionButtons" class="suggestion-buttons"></div>
+            
+            <div class="vocabulary-section">
+                <div class="vocabulary-title">📚 NVC Vocabulary</div>
+                <div id="vocabularyButtons" class="vocabulary-buttons"></div>
+            </div>
+        </div>
+        
+        <div class="input-area">
+            <input 
+                type="text" 
+                id="messageInput" 
+                class="message-input" 
+                placeholder="Type your message here..."
+                onkeypress="handleKeyPress(event)"
+            >
+            <button onclick="sendMessage()" class="send-button" id="sendButton">Send</button>
+        </div>
+    </div>
+
+    <script>
+        // Use current domain for deployment, localhost for development
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:19000/api/v1'
+            : `${window.location.protocol}//${window.location.host}/api/v1`;
+        let conversationHistory = [];
+        let currentStep = 'observation';
+        let conversationComplete = false;
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+            status.style.display = 'block';
+            
+            if (type !== 'loading') {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        function updateActiveStep(step) {
+            // Remove active class from all steps
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            
+            // Add active class to current step
+            const stepMap = {
+                'observation': 'observation-step',
+                'feeling': 'feeling-step', 
+                'need': 'need-step',
+                'request': 'request-step'
+            };
+            
+            if (stepMap[step]) {
+                document.getElementById(stepMap[step]).classList.add('active');
+            }
+        }
+
+        function addMessage(message, isUser = false) {
+            const conversation = document.getElementById('conversation');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
+            
+            if (isUser) {
+                messageDiv.innerHTML = `<strong>You:</strong> ${message}`;
+            } else {
+                messageDiv.innerHTML = `<strong>NVC AI Facilitator:</strong> ${message}`;
+            }
+            
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        function addGuidance(guidance, example) {
+            const conversation = document.getElementById('conversation');
+            
+            if (guidance) {
+                const guidanceDiv = document.createElement('div');
+                guidanceDiv.className = 'guidance-box';
+                guidanceDiv.innerHTML = `
+                    <div class="guidance-title">💡 NVC Guidance</div>
+                    <div class="guidance-text">${guidance}</div>
+                `;
+                conversation.appendChild(guidanceDiv);
+            }
+            
+            if (example) {
+                const exampleDiv = document.createElement('div');
+                exampleDiv.className = 'example-box';
+                exampleDiv.innerHTML = `
+                    <div class="example-title">📝 Example</div>
+                    <div class="example-text">${example}</div>
+                `;
+                conversation.appendChild(exampleDiv);
+            }
+            
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        function showSuggestions(suggestedResponses, vocabularyOptions) {
+            if (conversationComplete) {
+                document.getElementById('suggestions').style.display = 'none';
+                return;
+            }
+            
+            const suggestionsDiv = document.getElementById('suggestions');
+            const suggestionButtons = document.getElementById('suggestionButtons');
+            const vocabularyButtons = document.getElementById('vocabularyButtons');
+            
+            // Clear previous suggestions
+            suggestionButtons.innerHTML = '';
+            vocabularyButtons.innerHTML = '';
+            
+            // Add suggested response buttons
+            if (suggestedResponses && suggestedResponses.length > 0) {
+                suggestedResponses.forEach(response => {
+                    const button = document.createElement('button');
+                    button.className = 'suggestion-btn';
+                    button.textContent = response;
+                    button.onclick = () => selectSuggestion(response);
+                    suggestionButtons.appendChild(button);
+                });
+            }
+            
+            // Add vocabulary buttons
+            if (vocabularyOptions && vocabularyOptions.length > 0) {
+                vocabularyOptions.forEach(vocab => {
+                    const button = document.createElement('button');
+                    button.className = 'vocabulary-btn';
+                    button.textContent = vocab;
+                    button.onclick = () => insertVocabulary(vocab);
+                    vocabularyButtons.appendChild(button);
+                });
+            }
+            
+            // Show suggestions section
+            suggestionsDiv.style.display = 'block';
+        }
+
+        function convertMarkdownToHTML(text) {
+            // Convert markdown-style formatting to HTML
+            return text
+                .replace(/### \*\*(.*?)\*\*/g, '<h3><strong>$1</strong></h3>')
+                .replace(/## (.*?)$/gm, '<h2>$1</h2>')
+                .replace(/### (.*?)$/gm, '<h3>$1</h3>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/^• (.*?)$/gm, '<li>$1</li>')
+                .replace(/^✅ (.*?)$/gm, '<li>✅ $1</li>')
+                .replace(/(<li>.*<\/li>)/gs, '<ul>$1</ul>')
+                .replace(/<\/ul>\s*<ul>/g, '')
+                .replace(/---/g, '<hr style="border: 1px solid #28a745; margin: 20px 0;">')
+                .replace(/\n\n/g, '<br><br>');
+        }
+
+        function showNVCSummary(summary) {
+            const conversation = document.getElementById('conversation');
+            
+            // Add completion message
+            const completionDiv = document.createElement('div');
+            completionDiv.className = 'conversation-complete-message';
+            completionDiv.innerHTML = '🎉 <strong>NVC Conversation Complete!</strong> Here\'s your personalized guidance:';
+            conversation.appendChild(completionDiv);
+            
+            // Convert summary to HTML and add it
+            const htmlSummary = convertMarkdownToHTML(summary);
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'nvc-summary';
+            summaryDiv.innerHTML = `
+                <div class="summary-title">📋 Your NVC Action Plan</div>
+                <div class="summary-content">${htmlSummary}</div>
+            `;
+            conversation.appendChild(summaryDiv);
+            
+            // Hide suggestions and input
+            document.getElementById('suggestions').style.display = 'none';
+            document.getElementById('messageInput').placeholder = 'Conversation completed! Start a new conversation to continue.';
+            document.getElementById('sendButton').textContent = 'New Conversation';
+            document.getElementById('sendButton').onclick = () => location.reload();
+            
+            conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        function selectSuggestion(suggestion) {
+            document.getElementById('messageInput').value = suggestion;
+            document.getElementById('messageInput').focus();
+        }
+
+        function insertVocabulary(vocab) {
+            const input = document.getElementById('messageInput');
+            const currentValue = input.value;
+            
+            // Add vocabulary to current input
+            if (currentValue.trim() === '') {
+                input.value = vocab;
+            } else {
+                input.value = currentValue + ' ' + vocab;
+            }
+            
+            input.focus();
+        }
+
+        async function sendMessage() {
+            if (conversationComplete) {
+                location.reload();
+                return;
+            }
+            
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            const sendButton = document.getElementById('sendButton');
+            sendButton.disabled = true;
+            input.disabled = true;
+            
+            // Add user message to conversation
+            addMessage(message, true);
+            conversationHistory.push(message);
+            
+            // Clear input
+            input.value = '';
+            
+            showStatus('AI is thinking...', 'loading');
+            
+            try {
+                const response = await fetch(`${API_BASE}/nvc/conversation`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        nvc_step: currentStep,
+                        conversation_history: conversationHistory
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Add AI response
+                addMessage(data.ai_response);
+                conversationHistory.push(data.ai_response);
+                
+                // Check if conversation is complete
+                if (data.conversation_complete && data.nvc_summary) {
+                    conversationComplete = true;
+                    showNVCSummary(data.nvc_summary);
+                    showStatus('NVC conversation completed!', 'success');
+                } else {
+                    // Add guidance and example
+                    addGuidance(data.guidance, data.example);
+                    
+                    // Show suggestions and vocabulary options
+                    showSuggestions(data.suggested_responses, data.vocabulary_options);
+                    
+                    // Update current step
+                    currentStep = data.suggested_nvc_step;
+                    updateActiveStep(currentStep);
+                    
+                    showStatus('Response received', 'success');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, I encountered an error. Please make sure the backend server is running on port 19000.');
+                showStatus(`Error: ${error.message}`, 'error');
+            } finally {
+                if (!conversationComplete) {
+                    sendButton.disabled = false;
+                    input.disabled = false;
+                    input.focus();
+                }
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        // Test backend connection on page load
+        window.onload = async function() {
+            try {
+                const response = await fetch(`${API_BASE}/nvc/examples`);
+                if (response.ok) {
+                    showStatus('✅ Connected to NVC AI backend', 'success');
+                } else {
+                    throw new Error('Backend connection failed');
+                }
+            } catch (error) {
+                showStatus('⚠️ Backend not connected. Start the server with: cd backend && python app/main.py', 'error');
+            }
+            
+            // Focus on input
+            document.getElementById('messageInput').focus();
+            updateActiveStep('observation');
+        };
+    </script>
+</body>
+</html>

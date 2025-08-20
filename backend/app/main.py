@@ -8,15 +8,13 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 from loguru import logger
+import os
 
 from app.core.config import settings
-from app.core.logging import setup_logging
-from app.core.security import SecurityHeaders
-from app.database.session import engine
 from app.api import api_router
 
 
@@ -25,18 +23,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager for startup and shutdown events."""
     # Startup
     logger.info("Starting NVC AI Facilitator application")
-    setup_logging()
-    
-    # TODO: Initialize AI models and LangChain components
-    # TODO: Verify database connection
-    # TODO: Load NVC templates and resources
     
     yield
     
     # Shutdown
     logger.info("Shutting down NVC AI Facilitator application")
-    # TODO: Cleanup AI model connections
-    # TODO: Close database connections
 
 
 # Create FastAPI application instance
@@ -50,26 +41,28 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Security middleware
-app.add_middleware(SecurityHeaders)
-
-# CORS middleware
+# CORS middleware - Allow all origins for testing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
-# Trusted host middleware
-app.add_middleware(
-    TrustedHostMiddleware, 
-    allowed_hosts=settings.ALLOWED_HOSTS
-)
 
 # Include API routes
 app.include_router(api_router, prefix=settings.API_V1_STR)
+
+# Serve the test UI
+@app.get("/test")
+async def serve_test_ui():
+    """Serve the test UI HTML file."""
+    test_ui_path = "/mnt/d/dev2/nvcai/test_ui.html"
+    if os.path.exists(test_ui_path):
+        return FileResponse(test_ui_path, media_type="text/html")
+    else:
+        return JSONResponse({"error": "Test UI file not found"}, status_code=404)
 
 
 @app.exception_handler(Exception)
@@ -106,10 +99,12 @@ async def root() -> dict:
 
 
 if __name__ == "__main__":
+    import os
+    port = int(os.getenv("PORT", 19000))
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=settings.DEBUG,
         log_level=settings.LOG_LEVEL.lower()
     )

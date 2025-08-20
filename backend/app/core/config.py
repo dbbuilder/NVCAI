@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
     
-    # Database Configuration
-    DATABASE_URL: str = Field(..., description="PostgreSQL connection string")
+    # Database Configuration  
+    DATABASE_URL: str = Field(default="sqlite:///./nvc_test.db", description="Database connection string")
     
     # AI Model API Keys
     OPENAI_API_KEY: Optional[str] = None
@@ -25,14 +25,14 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
     
     # JWT Authentication
-    JWT_SECRET_KEY: str = Field(..., min_length=32)
+    JWT_SECRET_KEY: str = Field(default="test-jwt-secret-key-for-development-only-32-chars", min_length=32)
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # Security Settings
-    SECRET_KEY: str = Field(..., min_length=32)
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]
+    SECRET_KEY: str = Field(default="test-secret-key-for-development-only-32-characters", min_length=32)
+    CORS_ORIGINS: List[str] = ["*"]
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
     
     # Logging Configuration
