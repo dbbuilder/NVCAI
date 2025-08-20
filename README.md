@@ -3,6 +3,8 @@
 ## Project Description
 An AI-powered web and mobile application that facilitates Non-Violent Communication (NVC) practice through guided conversations. The application uses advanced language models to act as an experienced NVC facilitator, helping users work through conflicts and develop empathic communication skills across all platforms.
 
+**Status**: Step 0 Demo Complete - Ready for Railway deployment testing
+
 ## Architecture Overview
 
 ### Technology Stack
