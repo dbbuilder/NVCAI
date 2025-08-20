@@ -20,6 +20,7 @@ if __name__ == "__main__":
     
     port = int(os.getenv("PORT", 8000))
     print(f"[RAILWAY] Starting on 0.0.0.0:{port}")
+    print(f"[RAILWAY] Environment PORT = {os.getenv('PORT', 'NOT_SET')}")
     
     uvicorn.run(
         app,  # Use the app object directly
