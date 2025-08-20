@@ -142,8 +142,26 @@ Return only valid JSON, no other text."""
             temperature=0.3
         )
         
-        context = json.loads(response.choices[0].message.content)
+        # Clean and parse the response
+        raw_content = response.choices[0].message.content.strip()
+        logger.info(f"Raw AI response: {raw_content}")
+        
+        # Remove any markdown code blocks if present
+        if raw_content.startswith("```"):
+            raw_content = raw_content.split("```")[1]
+            if raw_content.startswith("json"):
+                raw_content = raw_content[4:]
+        
+        context = json.loads(raw_content)
         logger.info(f"AI extracted context: {context}")
+        
+        # Ensure all required fields exist with defaults
+        context.setdefault("person", "colleague")
+        context.setdefault("relationship", "professional")
+        context.setdefault("setting", "situation")
+        context.setdefault("action", "behaving this way")
+        context.setdefault("emotion", "frustrated")
+        
         return context
         
     except Exception as e:
