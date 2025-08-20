@@ -108,15 +108,58 @@ def get_nvc_vocabulary_for_step(step: str, context: str = "") -> List[str]:
     return vocabularies.get(step, [])
 
 def analyze_user_context(message: str) -> dict:
-    """Analyze user's message to extract context for personalized suggestions."""
+    """Use AI to analyze the user's message and extract contextual information for better suggestions."""
+    try:
+        from openai import OpenAI
+        import os
+        import json
+        
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            logger.warning("No OpenAI API key found, using fallback context analysis")
+            return fallback_context_analysis(message)
+            
+        client = OpenAI(api_key=api_key)
+        
+        prompt = f"""Analyze this message and extract key context information. Return ONLY a JSON object with these fields:
+- "person": who they're referring to (coworker, boss, partner, friend, family member, teammate, etc.)
+- "relationship": the relationship type (professional, personal, family, etc.) 
+- "setting": where this happened (work, meeting, home, phone call, etc.)
+- "action": what the other person did (interrupted, dismissed, ignored, took credit, etc.)
+- "emotion": the user's emotional state (frustrated, hurt, angry, disappointed, etc.)
+
+Message: "{message}"
+
+Return only valid JSON, no other text."""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "You are a context extraction tool. Return only valid JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150,
+            temperature=0.3
+        )
+        
+        context = json.loads(response.choices[0].message.content)
+        logger.info(f"AI extracted context: {context}")
+        return context
+        
+    except Exception as e:
+        logger.warning(f"AI context analysis failed: {e}, using fallback")
+        return fallback_context_analysis(message)
+
+def fallback_context_analysis(message: str) -> dict:
+    """Fallback context analysis using pattern matching when AI fails."""
     message_lower = message.lower()
     
-    # Extract key elements from the message
     context = {
-        "person": None,
-        "action": None,
-        "setting": None,
-        "emotion_expressed": None
+        "person": "colleague",
+        "relationship": "professional", 
+        "setting": "situation",
+        "action": "behaving this way",
+        "emotion": "frustrated"
     }
     
     # Identify person
@@ -126,18 +169,10 @@ def analyze_user_context(message: str) -> dict:
         context["person"] = "colleague"
     elif "partner" in message_lower or "spouse" in message_lower:
         context["person"] = "partner"
+        context["relationship"] = "personal"
     elif "friend" in message_lower:
         context["person"] = "friend"
-    
-    # Identify action
-    if "interrupt" in message_lower:
-        context["action"] = "interrupting"
-    elif "credit" in message_lower:
-        context["action"] = "taking credit"
-    elif "ignore" in message_lower or "dismiss" in message_lower:
-        context["action"] = "dismissing"
-    elif "late" in message_lower:
-        context["action"] = "being late"
+        context["relationship"] = "personal"
     
     # Identify setting
     if "meeting" in message_lower:
@@ -146,14 +181,6 @@ def analyze_user_context(message: str) -> dict:
         context["setting"] = "work"
     elif "home" in message_lower:
         context["setting"] = "home"
-    
-    # Identify expressed emotions
-    if any(word in message_lower for word in ["frustrated", "angry", "mad"]):
-        context["emotion_expressed"] = "frustrated"
-    elif any(word in message_lower for word in ["sad", "hurt", "disappointed"]):
-        context["emotion_expressed"] = "sad"
-    elif any(word in message_lower for word in ["excited", "happy", "grateful"]):
-        context["emotion_expressed"] = "positive"
     
     return context
 
