@@ -405,6 +405,8 @@ async def nvc_conversation(request: ConversationRequest):
     NVC AI conversation endpoint with OpenAI integration.
     Falls back to rule-based logic if OpenAI is not configured.
     """
+    logger.info(f"NVC conversation request: {request.message[:50]}...")
+    
     try:
         client = get_openai_client()
         
@@ -436,7 +438,13 @@ async def nvc_conversation(request: ConversationRequest):
                 
                 if should_complete_conversation(conversation_history) or next_step == "complete":
                     # Generate final NVC summary
-                    context = analyze_user_context(request.message)
+                    try:
+                        context = analyze_user_context(request.message)
+                        logger.info(f"Context analysis successful: {context}")
+                    except Exception as ctx_error:
+                        logger.error(f"Context analysis failed: {ctx_error}")
+                        context = {"person": "colleague", "setting": "situation", "action": "behaving this way"}
+                    
                     nvc_summary = generate_nvc_summary(conversation_history, context)
                     
                     return ConversationResponse(
@@ -451,7 +459,13 @@ async def nvc_conversation(request: ConversationRequest):
                     )
                 
                 # Get suggestions for NEXT step (not current)
-                context = analyze_user_context(request.message)
+                try:
+                    context = analyze_user_context(request.message)
+                    logger.info(f"Context analysis successful: {context}")
+                except Exception as ctx_error:
+                    logger.error(f"Context analysis failed: {ctx_error}")
+                    context = {"person": "colleague", "setting": "situation", "action": "behaving this way"}
+                
                 vocabulary = get_nvc_vocabulary_for_step(next_step)
                 suggestions = generate_contextual_suggestions(next_step, request.message, context)
                 
@@ -537,7 +551,23 @@ async def nvc_conversation(request: ConversationRequest):
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing conversation: {str(e)}")
+        logger.error(f"NVC conversation endpoint error: {str(e)}", exc_info=True)
+        
+        # Return a safe fallback response instead of raising HTTP exception
+        return ConversationResponse(
+            ai_response="I understand you'd like to use NVC. Let's start with what you observed.",
+            suggested_nvc_step="observation",
+            guidance="Tell me what happened - just the facts, without evaluation.",
+            example="Instead of 'He was rude', try 'He interrupted me twice'",
+            suggested_responses=[
+                "I noticed that...",
+                "What I observed was...", 
+                "The situation I want to discuss is..."
+            ],
+            vocabulary_options=["noticed", "observed", "heard", "saw", "experienced"],
+            nvc_summary=None,
+            conversation_complete=False
+        )
 
 @router.get("/feelings")
 async def get_feelings_list():

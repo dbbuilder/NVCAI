@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # Application Settings
     APP_NAME: str = "NVC AI Facilitator"
-    APP_VERSION: str = "1.5.3-disable-ai-railway"
+    APP_VERSION: str = "1.5.4-comprehensive-error-handling"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
     
