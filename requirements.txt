@@ -11,3 +11,4 @@ openai>=1.6.0
 # Utilities
 python-multipart>=0.0.6
 loguru>=0.7.0
+requests>=2.28.0
