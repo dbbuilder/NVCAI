@@ -108,100 +108,29 @@ def get_nvc_vocabulary_for_step(step: str, context: str = "") -> List[str]:
     return vocabularies.get(step, [])
 
 def analyze_user_context(message: str) -> dict:
-    """Use AI to analyze the user's message and extract contextual information for better suggestions."""
-    
-    # Temporarily disable AI analysis on Railway to fix 500 errors
-    if os.getenv("RAILWAY_ENVIRONMENT"):
-        logger.info("Railway environment detected, using fallback context analysis")
-        return fallback_context_analysis(message)
-    
-    try:
-        from openai import OpenAI
-        import os
-        import json
-        
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            logger.warning("No OpenAI API key found, using fallback context analysis")
-            return fallback_context_analysis(message)
-            
-        client = OpenAI(api_key=api_key)
-        
-        prompt = f"""Analyze this message and extract key context information. Return ONLY a JSON object with these fields:
-- "person": who they're referring to (coworker, boss, partner, friend, family member, teammate, etc.)
-- "relationship": the relationship type (professional, personal, family, etc.) 
-- "setting": where this happened (work, meeting, home, phone call, etc.)
-- "action": what the other person did (interrupted, dismissed, ignored, took credit, etc.)
-- "emotion": the user's emotional state (frustrated, hurt, angry, disappointed, etc.)
-
-Message: "{message}"
-
-Return only valid JSON, no other text."""
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": "You are a context extraction tool. Return only valid JSON."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=150,
-            temperature=0.3
-        )
-        
-        # Clean and parse the response
-        raw_content = response.choices[0].message.content.strip()
-        logger.info(f"Raw AI response: {raw_content}")
-        
-        # Remove any markdown code blocks if present
-        if raw_content.startswith("```"):
-            raw_content = raw_content.split("```")[1]
-            if raw_content.startswith("json"):
-                raw_content = raw_content[4:]
-        
-        context = json.loads(raw_content)
-        logger.info(f"AI extracted context: {context}")
-        
-        # Ensure all required fields exist with defaults
-        context.setdefault("person", "colleague")
-        context.setdefault("relationship", "professional")
-        context.setdefault("setting", "situation")
-        context.setdefault("action", "behaving this way")
-        context.setdefault("emotion", "frustrated")
-        
-        return context
-        
-    except Exception as e:
-        logger.warning(f"AI context analysis failed: {e}, using fallback")
-        return fallback_context_analysis(message)
-
-def fallback_context_analysis(message: str) -> dict:
-    """Fallback context analysis using pattern matching when AI fails."""
+    """Simple pattern matching for context - reliable and fast."""
     message_lower = message.lower()
     
     context = {
-        "person": "colleague",
-        "relationship": "professional", 
-        "setting": "situation",
-        "action": "behaving this way",
-        "emotion": "frustrated"
+        "person": "they",
+        "setting": "this situation",
+        "action": "behaved this way"
     }
     
-    # Identify person
-    if "manager" in message_lower or "boss" in message_lower:
-        context["person"] = "manager"
-    elif "colleague" in message_lower or "coworker" in message_lower:
-        context["person"] = "colleague"
-    elif "partner" in message_lower or "spouse" in message_lower:
-        context["person"] = "partner"
-        context["relationship"] = "personal"
+    # Simple person detection
+    if "coworker" in message_lower or "colleague" in message_lower:
+        context["person"] = "my coworker"
+    elif "boss" in message_lower or "manager" in message_lower:
+        context["person"] = "my manager"
+    elif "partner" in message_lower:
+        context["person"] = "my partner"
     elif "friend" in message_lower:
-        context["person"] = "friend"
-        context["relationship"] = "personal"
+        context["person"] = "my friend"
     
-    # Identify setting
+    # Simple setting detection
     if "meeting" in message_lower:
-        context["setting"] = "meeting"
-    elif "work" in message_lower or "office" in message_lower:
+        context["setting"] = "our meeting"
+    elif "work" in message_lower:
         context["setting"] = "work"
     elif "home" in message_lower:
         context["setting"] = "home"
@@ -209,58 +138,54 @@ def fallback_context_analysis(message: str) -> dict:
     return context
 
 def generate_contextual_suggestions(step: str, user_message: str, context: dict = None) -> List[str]:
-    """Generate highly contextual NVC response suggestions based on the user's specific situation."""
-    
-    if not context:
-        context = analyze_user_context(user_message)
-    
-    # Use safe defaults and handle None values
-    person = context.get("person") or "colleague"
-    action = context.get("action") or "behaved"
-    setting = context.get("setting") or "situation"
-    
-    # Remove "my" prefix when person is None or unclear
-    person_phrase = person if person in ["colleague", "coworker", "teammate", "friend", "partner"] else "they"
-    possessive_person = f"my {person}" if person not in ["they", "someone"] else person
-    
+    """Use AI to generate contextual NVC suggestions based on the user's situation."""
+    try:
+        client = get_openai_client()
+        if not client:
+            return get_generic_suggestions(step)
+        
+        prompt = f"""Generate 3 contextual NVC suggestions for the {step} step based on this situation: "{user_message}"
+
+{step.upper()} suggestions should:
+- Be specific to their situation
+- Use first person ("I" statements)
+- Be examples they could actually say
+- Follow NVC principles
+
+Return only the 3 suggestions, one per line, no other text."""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Generate contextual NVC suggestions."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=150,
+            temperature=0.7
+        )
+        
+        suggestions = response.choices[0].message.content.strip().split('\n')
+        return [s.strip() for s in suggestions if s.strip()][:3]
+        
+    except Exception:
+        return get_generic_suggestions(step)
+
+def get_generic_suggestions(step: str) -> List[str]:
+    """Fallback generic suggestions."""
     suggestions = {
         "observation": [
-            f"I noticed that {possessive_person} interrupted me three times during our {setting}",
-            f"I observed that {possessive_person} didn't acknowledge my contributions", 
-            f"What happened was that {possessive_person} spoke over me while I was presenting"
-        ],
-        "feeling": [
-            f"I feel frustrated when {person_phrase} interrupts me",
-            f"I'm feeling unheard and undervalued in our {setting}",
-            f"I feel disappointed when my ideas aren't acknowledged"
-        ],
-        "need": [
-            f"I need respect and recognition for my contributions",
-            f"I value being heard and having my voice matter",
-            f"I need collaboration and mutual respect in our {setting}"
-        ],
-        "request": [
-            f"Would you be willing to let me finish my thoughts before responding?",
-            f"Could we establish a way for me to contribute without interruption?",
-            f"I'd appreciate if you could acknowledge my input during our {setting}s"
-        ]
-    }
-    
-    # Fallback to generic suggestions if context is unclear
-    generic_suggestions = {
-        "observation": [
             "I noticed that...",
-            "What I observed was...",
-            "The facts are that..."
+            "What I observed was...", 
+            "The situation I want to discuss is..."
         ],
         "feeling": [
             "I feel frustrated about this",
-            "I'm feeling unheard", 
+            "I'm feeling unheard",
             "I feel concerned about..."
         ],
         "need": [
             "I need respect and understanding",
-            "I value honest communication",
+            "I value honest communication", 
             "I need to feel heard and valued"
         ],
         "request": [
@@ -269,8 +194,7 @@ def generate_contextual_suggestions(step: str, user_message: str, context: dict 
             "I'd appreciate if we could..."
         ]
     }
-    
-    return suggestions.get(step, generic_suggestions.get(step, []))
+    return suggestions.get(step, [])
 
 def detect_current_nvc_step(message: str) -> str:
     """Detect which NVC step the user is currently expressing."""
@@ -438,13 +362,7 @@ async def nvc_conversation(request: ConversationRequest):
                 
                 if should_complete_conversation(conversation_history) or next_step == "complete":
                     # Generate final NVC summary
-                    try:
-                        context = analyze_user_context(request.message)
-                        logger.info(f"Context analysis successful: {context}")
-                    except Exception as ctx_error:
-                        logger.error(f"Context analysis failed: {ctx_error}")
-                        context = {"person": "colleague", "setting": "situation", "action": "behaving this way"}
-                    
+                    context = analyze_user_context(request.message)
                     nvc_summary = generate_nvc_summary(conversation_history, context)
                     
                     return ConversationResponse(
@@ -459,13 +377,7 @@ async def nvc_conversation(request: ConversationRequest):
                     )
                 
                 # Get suggestions for NEXT step (not current)
-                try:
-                    context = analyze_user_context(request.message)
-                    logger.info(f"Context analysis successful: {context}")
-                except Exception as ctx_error:
-                    logger.error(f"Context analysis failed: {ctx_error}")
-                    context = {"person": "colleague", "setting": "situation", "action": "behaving this way"}
-                
+                context = analyze_user_context(request.message)
                 vocabulary = get_nvc_vocabulary_for_step(next_step)
                 suggestions = generate_contextual_suggestions(next_step, request.message, context)
                 
