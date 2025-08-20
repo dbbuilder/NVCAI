@@ -38,7 +38,8 @@ def main():
             host="0.0.0.0",
             port=port,
             reload=False,
-            log_level="info"
+            log_level="info",
+            access_log=True
         )
     except Exception as e:
         logger.error(f"Failed to start application: {e}")
