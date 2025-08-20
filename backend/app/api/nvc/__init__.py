@@ -557,19 +557,34 @@ async def nvc_conversation(request: ConversationRequest):
                 
                 # Check for explicit completion requests FIRST (before AI)
                 if should_complete_conversation(conversation_history):
-                    context = analyze_user_context(request.message)
-                    nvc_summary = generate_nvc_summary(conversation_history, context)
-                    
-                    return ConversationResponse(
-                        response="Excellent! You've worked through all four steps of NVC. Here's your complete framework:",
-                        current_step="complete",
-                        guidance="Conversation complete - here's your NVC summary",
-                        example="Use this structure when talking to your executive director",
-                        suggested_responses=[],
-                        vocabulary_options=[],
-                        nvc_summary=nvc_summary,
-                        conversation_complete=True
-                    )
+                    logger.info("Completion detected, generating summary...")
+                    try:
+                        context = analyze_user_context(request.message)
+                        nvc_summary = generate_nvc_summary(conversation_history, context)
+                        
+                        return ConversationResponse(
+                            response="Excellent! You've worked through all four steps of NVC. Here's your complete framework:",
+                            current_step="complete",
+                            guidance="Conversation complete - here's your NVC summary",
+                            example="Use this structure when talking to your executive director",
+                            suggested_responses=[],
+                            vocabulary_options=[],
+                            nvc_summary=nvc_summary,
+                            conversation_complete=True
+                        )
+                    except Exception as e:
+                        logger.error(f"Error generating summary: {e}")
+                        # Return simple completion without summary if there's an error
+                        return ConversationResponse(
+                            response="Great work! You've completed the NVC exploration. Here's a simple summary of your conversation.",
+                            current_step="complete",
+                            guidance="Conversation complete",
+                            example="You can use this framework when talking to the other person",
+                            suggested_responses=[],
+                            vocabulary_options=[],
+                            nvc_summary="## Your NVC Summary\n\nYou've successfully worked through the four steps of NVC:\n\n1. **Observation**: What you noticed\n2. **Feelings**: How you felt about it\n3. **Needs**: What you value and need\n4. **Request**: What you asked for\n\nUse this structure in your conversation!",
+                            conversation_complete=True
+                        )
                 
                 # Get AI response
                 prompt = get_nvc_prompt(request.message, request.context, conversation_history)
@@ -612,19 +627,34 @@ async def nvc_conversation(request: ConversationRequest):
         
         # Check for explicit completion requests FIRST (before AI)
         if should_complete_conversation(conversation_history):
-            context = analyze_user_context(request.message)
-            nvc_summary = generate_nvc_summary(conversation_history, context)
-            
-            return ConversationResponse(
-                response="Great work! You've completed all four steps of NVC. Here's your summary:",
-                current_step="complete",
-                guidance="Conversation complete - here's your NVC summary",
-                example="Use this structure when talking to your executive director",
-                suggested_responses=[],
-                vocabulary_options=[],
-                nvc_summary=nvc_summary,
-                conversation_complete=True
-            )
+            logger.info("Fallback completion detected...")
+            try:
+                context = analyze_user_context(request.message)
+                nvc_summary = generate_nvc_summary(conversation_history, context)
+                
+                return ConversationResponse(
+                    response="Great work! You've completed all four steps of NVC. Here's your summary:",
+                    current_step="complete",
+                    guidance="Conversation complete - here's your NVC summary",
+                    example="Use this structure when talking to your executive director",
+                    suggested_responses=[],
+                    vocabulary_options=[],
+                    nvc_summary=nvc_summary,
+                    conversation_complete=True
+                )
+            except Exception as e:
+                logger.error(f"Error in fallback summary generation: {e}")
+                # Return simple completion
+                return ConversationResponse(
+                    response="Great work! You've completed the NVC exploration.",
+                    current_step="complete",
+                    guidance="Conversation complete",
+                    example="You can use this framework when talking to the other person",
+                    suggested_responses=[],
+                    vocabulary_options=[],
+                    nvc_summary="## Your NVC Summary\n\nYou've successfully worked through NVC!",
+                    conversation_complete=True
+                )
         
         # Use AI step detection for rule-based fallback too
         current_step = detect_nvc_step_with_ai(request.message, conversation_history)
