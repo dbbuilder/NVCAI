@@ -230,7 +230,7 @@ def detect_current_nvc_step(message: str) -> str:
 
 def get_next_nvc_step(current_step: str) -> str:
     """Determine the next NVC step in the sequence."""
-    step_sequence = ["observation", "feeling", "need", "request", "complete"]
+    step_sequence = ["observation", "feeling", "need", "request"]
     
     if current_step == "starting":
         return "observation"
@@ -238,23 +238,32 @@ def get_next_nvc_step(current_step: str) -> str:
         current_index = step_sequence.index(current_step)
         if current_index < len(step_sequence) - 1:
             return step_sequence[current_index + 1]
+        else:
+            # At request step - stay there until we get a specific request
+            return "request"
     
-    return "complete"
+    return "request"  # Default to request if unclear
 
 def should_complete_conversation(conversation_history: List[str]) -> bool:
     """Determine if the conversation has covered all NVC steps and should complete."""
-    if len(conversation_history) < 4:  # Need at least some back-and-forth
+    if len(conversation_history) < 5:  # Need more back-and-forth for full conversation
         return False
     
-    # Check if we have evidence of all four steps
-    all_messages = " ".join(conversation_history)
+    # Check if we have evidence of all four steps in proper sequence
+    all_messages = " ".join(conversation_history).lower()
     
-    has_observation = any(word in all_messages.lower() for word in ["noticed", "saw", "heard", "observed"])
-    has_feeling = any(word in all_messages.lower() for word in ["feel", "feeling", "frustrated", "sad", "angry"])
-    has_need = any(word in all_messages.lower() for word in ["need", "value", "respect", "understanding"])
-    has_request = any(word in all_messages.lower() for word in ["would you", "could", "please", "request"])
+    has_observation = any(word in all_messages for word in ["noticed", "saw", "heard", "observed"])
+    has_feeling = any(word in all_messages for word in ["feel", "feeling", "frustrated", "sad", "angry"])
+    has_need = any(word in all_messages for word in ["need", "value", "respect", "understanding"])
     
-    return has_observation and has_feeling and has_need and has_request
+    # More stringent request detection - needs to be a clear actionable request
+    has_specific_request = any(phrase in all_messages for phrase in [
+        "would you be willing", "could you please", "would you please", 
+        "i request", "i ask that", "could we", "will you"
+    ])
+    
+    # Only complete if all steps are present AND there's a specific request
+    return has_observation and has_feeling and has_need and has_specific_request
 
 def generate_nvc_summary(conversation_history: List[str], context: dict) -> str:
     """Generate a complete NVC statement summary and action guidance."""
