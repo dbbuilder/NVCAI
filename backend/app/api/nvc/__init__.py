@@ -109,6 +109,12 @@ def get_nvc_vocabulary_for_step(step: str, context: str = "") -> List[str]:
 
 def analyze_user_context(message: str) -> dict:
     """Use AI to analyze the user's message and extract contextual information for better suggestions."""
+    
+    # Temporarily disable AI analysis on Railway to fix 500 errors
+    if os.getenv("RAILWAY_ENVIRONMENT"):
+        logger.info("Railway environment detected, using fallback context analysis")
+        return fallback_context_analysis(message)
+    
     try:
         from openai import OpenAI
         import os
