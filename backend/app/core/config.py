@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     
     # Application Settings
     APP_NAME: str = "NVC AI Facilitator"
-    APP_VERSION: str = "1.6.3-fix-request-step"
+    APP_VERSION: str = "2.0.0-ai-step-detection"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
     

@@ -196,6 +196,52 @@ def get_generic_suggestions(step: str) -> List[str]:
     }
     return suggestions.get(step, [])
 
+def detect_nvc_step_with_ai(message: str, conversation_history: List[str] = None) -> str:
+    """Use AI to intelligently detect the current NVC step."""
+    try:
+        client = get_openai_client()
+        if not client:
+            return detect_current_nvc_step(message)
+        
+        # Get recent context
+        context = ""
+        if conversation_history and len(conversation_history) > 1:
+            context = f"Previous messages: {conversation_history[-3:]}"
+        
+        prompt = f"""Analyze this message in the context of Non-Violent Communication and determine which step it represents:
+
+Message: "{message}"
+{context}
+
+NVC Steps:
+- observation: Facts without judgment (I noticed, I saw, what happened)
+- feeling: Emotional response (I feel frustrated, sad, excited)  
+- need: Universal human needs (I need respect, connection, understanding)
+- request: Specific actionable ask (Would you be willing to...)
+
+Return only one word: observation, feeling, need, or request"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=10,
+            temperature=0.1
+        )
+        
+        ai_step = response.choices[0].message.content.strip().lower()
+        
+        # Validate AI response
+        if ai_step in ["observation", "feeling", "need", "request"]:
+            logger.info(f"AI detected step: {ai_step} for message: {message[:50]}...")
+            return ai_step
+        else:
+            logger.warning(f"AI returned invalid step: {ai_step}, falling back to pattern matching")
+            return detect_current_nvc_step(message)
+        
+    except Exception as e:
+        logger.warning(f"AI step detection failed: {e}, using pattern matching")
+        return detect_current_nvc_step(message)
+
 def detect_current_nvc_step(message: str) -> str:
     """Detect which NVC step the user is currently expressing."""
     message_lower = message.lower()
@@ -243,6 +289,48 @@ def get_next_nvc_step(current_step: str) -> str:
             return "request"
     
     return "request"  # Default to request if unclear
+
+def ai_should_complete_conversation(conversation_history: List[str]) -> bool:
+    """Use AI to determine if all NVC steps have been meaningfully covered."""
+    try:
+        client = get_openai_client()
+        if not client or len(conversation_history) < 4:
+            return should_complete_conversation(conversation_history)
+        
+        prompt = f"""Review this NVC conversation and determine if the user has genuinely worked through all 4 steps:
+
+Conversation: {conversation_history}
+
+Have they provided:
+1. A clear observation (facts without judgment)?
+2. Genuine feelings (not thoughts disguised as feelings)?
+3. Identified underlying needs?
+4. Made a specific, doable request?
+
+Return only: true or false"""
+
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=5,
+            temperature=0.1
+        )
+        
+        ai_result = response.choices[0].message.content.strip().lower()
+        
+        if ai_result == "true":
+            logger.info("AI determined conversation is complete")
+            return True
+        elif ai_result == "false":
+            logger.info("AI determined conversation needs more work")
+            return False
+        else:
+            logger.warning(f"AI returned invalid completion result: {ai_result}")
+            return should_complete_conversation(conversation_history)
+            
+    except Exception as e:
+        logger.warning(f"AI completion detection failed: {e}, using pattern matching")
+        return should_complete_conversation(conversation_history)
 
 def should_complete_conversation(conversation_history: List[str]) -> bool:
     """Determine if the conversation has covered all NVC steps and should complete."""
@@ -347,8 +435,8 @@ async def nvc_conversation(request: ConversationRequest):
                 conversation_history = request.conversation_history or []
                 conversation_history.append(request.message)
                 
-                # Check if conversation should complete
-                if should_complete_conversation(conversation_history):
+                # Use AI to check if conversation should complete
+                if ai_should_complete_conversation(conversation_history):
                     context = analyze_user_context(request.message)
                     nvc_summary = generate_nvc_summary(conversation_history, context)
                     
@@ -377,8 +465,8 @@ async def nvc_conversation(request: ConversationRequest):
                 
                 ai_response = response.choices[0].message.content.strip()
                 
-                # Detect current and next steps
-                current_step = detect_current_nvc_step(request.message)
+                # Use AI to detect current step with conversation context
+                current_step = detect_nvc_step_with_ai(request.message, conversation_history)
                 next_step = get_next_nvc_step(current_step)
                 
                 # Get vocabulary and suggestions
@@ -402,8 +490,8 @@ async def nvc_conversation(request: ConversationRequest):
         conversation_history = request.conversation_history or []
         conversation_history.append(request.message)
         
-        # Check if conversation should complete
-        if should_complete_conversation(conversation_history):
+        # Use AI to check if conversation should complete
+        if ai_should_complete_conversation(conversation_history):
             context = analyze_user_context(request.message)
             nvc_summary = generate_nvc_summary(conversation_history, context)
             
@@ -418,7 +506,8 @@ async def nvc_conversation(request: ConversationRequest):
                 conversation_complete=True
             )
         
-        current_step = detect_current_nvc_step(request.message)
+        # Use AI step detection for rule-based fallback too
+        current_step = detect_nvc_step_with_ai(request.message, conversation_history)
         next_step = get_next_nvc_step(current_step)
         
         # Simple step responses
