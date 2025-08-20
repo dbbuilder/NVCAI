@@ -334,11 +334,28 @@ async def nvc_conversation(request: ConversationRequest):
         
         if client:
             try:
-                # Get conversation context
+                # Get conversation context and check completion first
                 conversation_history = request.conversation_history or []
-                prompt = get_nvc_prompt(request.message, request.context, conversation_history)
+                conversation_history.append(request.message)
+                
+                # Check if conversation should complete
+                if should_complete_conversation(conversation_history):
+                    context = analyze_user_context(request.message)
+                    nvc_summary = generate_nvc_summary(conversation_history, context)
+                    
+                    return ConversationResponse(
+                        ai_response="Excellent! You've worked through all four steps of NVC. Here's your complete framework:",
+                        suggested_nvc_step="complete",
+                        guidance="Conversation complete - here's your NVC summary",
+                        example="Use this structure when talking to your executive director",
+                        suggested_responses=[],
+                        vocabulary_options=[],
+                        nvc_summary=nvc_summary,
+                        conversation_complete=True
+                    )
                 
                 # Get AI response
+                prompt = get_nvc_prompt(request.message, request.context, conversation_history)
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
@@ -373,6 +390,25 @@ async def nvc_conversation(request: ConversationRequest):
                 pass
         
         # Rule-based fallback
+        conversation_history = request.conversation_history or []
+        conversation_history.append(request.message)
+        
+        # Check if conversation should complete
+        if should_complete_conversation(conversation_history):
+            context = analyze_user_context(request.message)
+            nvc_summary = generate_nvc_summary(conversation_history, context)
+            
+            return ConversationResponse(
+                ai_response="Great work! You've completed all four steps of NVC. Here's your summary:",
+                suggested_nvc_step="complete",
+                guidance="Conversation complete - here's your NVC summary",
+                example="Use this structure when talking to your executive director",
+                suggested_responses=[],
+                vocabulary_options=[],
+                nvc_summary=nvc_summary,
+                conversation_complete=True
+            )
+        
         current_step = detect_current_nvc_step(request.message)
         next_step = get_next_nvc_step(current_step)
         
