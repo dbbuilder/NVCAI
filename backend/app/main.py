@@ -22,12 +22,13 @@ from app.api import api_router
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Application lifespan manager for startup and shutdown events."""
     # Startup
-    logger.info("Starting NVC AI Facilitator application")
+    logger.info(f"Starting NVC AI Facilitator v{settings.APP_VERSION}")
+    logger.info(f"Environment: {os.getenv('RAILWAY_ENVIRONMENT', 'local')}")
     
     yield
     
     # Shutdown
-    logger.info("Shutting down NVC AI Facilitator application")
+    logger.info(f"Shutting down NVC AI Facilitator v{settings.APP_VERSION}")
 
 
 # Create FastAPI application instance

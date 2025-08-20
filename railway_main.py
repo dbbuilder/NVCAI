@@ -16,9 +16,11 @@ os.chdir(str(backend_path))
 # Import and run the app
 if __name__ == "__main__":
     from app.main import app
+    from app.core.config import settings
     import uvicorn
     
     port = int(os.getenv("PORT", 8000))
+    print(f"[RAILWAY] NVC AI Facilitator v{settings.APP_VERSION}")
     print(f"[RAILWAY] Starting on 0.0.0.0:{port}")
     print(f"[RAILWAY] Environment PORT = {os.getenv('PORT', 'NOT_SET')}")
     
