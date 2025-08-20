@@ -648,8 +648,8 @@
                 const data = await response.json();
                 
                 // Add AI response
-                addMessage(data.ai_response);
-                conversationHistory.push(data.ai_response);
+                addMessage(data.response);
+                conversationHistory.push(data.response);
                 
                 // Check if conversation is complete
                 if (data.conversation_complete && data.nvc_summary) {
@@ -664,7 +664,7 @@
                     showSuggestions(data.suggested_responses, data.vocabulary_options);
                     
                     // Update current step
-                    currentStep = data.suggested_nvc_step;
+                    currentStep = data.current_step;
                     updateActiveStep(currentStep);
                     
                     showStatus('Response received', 'success');
@@ -672,7 +672,7 @@
                 
             } catch (error) {
                 console.error('Error:', error);
-                addMessage('Sorry, I encountered an error. Please make sure the backend server is running on port 19000.');
+                addMessage('Sorry, I encountered an error connecting to the NVC AI service. Please try again in a moment.');
                 showStatus(`Error: ${error.message}`, 'error');
             } finally {
                 if (!conversationComplete) {
