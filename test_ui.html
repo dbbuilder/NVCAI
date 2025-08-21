@@ -379,6 +379,24 @@
             100% { opacity: 1; }
         }
 
+        .speak-button {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 0.9em;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: all 0.3s ease;
+            vertical-align: middle;
+        }
+        
+        .speak-button:hover {
+            background: #138496;
+            transform: scale(1.1);
+        }
+
         .input-area {
             display: flex;
             gap: 10px;
@@ -476,11 +494,7 @@
         </div>
         
         <div class="conversation-area" id="conversation">
-            <div class="ai-message">
-                <strong>NVC AI Facilitator:</strong> Hello! I'm here to help you practice Non-Violent Communication. 
-                Share a situation you'd like to work through, and I'll guide you through the four steps of NVC: 
-                Observation, Feelings, Needs, and Requests. What would you like to talk about?
-            </div>
+            <!-- Dynamic messages will be added here -->
         </div>
         
         <div id="status" class="status" style="display: none;"></div>
@@ -579,11 +593,46 @@
             if (isUser) {
                 messageDiv.innerHTML = `<strong>You:</strong> ${message}`;
             } else {
-                messageDiv.innerHTML = `<strong>NVC AI Facilitator:</strong> ${message}`;
+                messageDiv.innerHTML = `
+                    <strong>NVC AI Facilitator:</strong> ${message}
+                    <button onclick="speakMessage('${message.replace(/'/g, "\\'")}')" class="speak-button" title="Read aloud">🔊</button>
+                `;
             }
             
             conversation.appendChild(messageDiv);
             conversation.scrollTop = conversation.scrollHeight;
+        }
+
+        function speakMessage(message) {
+            if ('speechSynthesis' in window) {
+                // Stop any current speech
+                speechSynthesis.cancel();
+                
+                // Clean the message text (remove HTML and extra formatting)
+                const cleanMessage = message.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ');
+                
+                const utterance = new SpeechSynthesisUtterance(cleanMessage);
+                utterance.rate = 0.8;
+                utterance.pitch = 1;
+                utterance.volume = 0.8;
+                
+                // Try to use a pleasant voice
+                const voices = speechSynthesis.getVoices();
+                const preferredVoice = voices.find(voice => 
+                    voice.name.includes('Google') || 
+                    voice.name.includes('Natural') ||
+                    voice.name.includes('Enhanced') ||
+                    (voice.lang.startsWith('en') && voice.localService)
+                );
+                
+                if (preferredVoice) {
+                    utterance.voice = preferredVoice;
+                }
+                
+                speechSynthesis.speak(utterance);
+            } else {
+                showStatus('Text-to-speech not supported in this browser', 'error');
+            }
         }
 
         function addGuidance(guidance, example) {
@@ -869,8 +918,10 @@
                 
                 recognition.onresult = function(event) {
                     const transcript = event.results[0][0].transcript;
-                    document.getElementById('messageInput').value = transcript;
-                    showStatus('Voice input captured', 'success');
+                    const messageInput = document.getElementById('messageInput');
+                    messageInput.value = transcript;
+                    messageInput.focus(); // Focus the input to show the text clearly
+                    showStatus(`Voice input: "${transcript}"`, 'success');
                 };
                 
                 recognition.onend = function() {
@@ -892,14 +943,20 @@
 
         function startVoiceInput() {
             if (!recognition) {
-                showStatus('Voice recognition not supported in this browser', 'error');
+                showStatus('Voice recognition not supported in this browser. Try Chrome or Edge.', 'error');
                 return;
             }
             
             if (isListening) {
                 recognition.stop();
+                showStatus('Voice input stopped', 'success');
             } else {
-                recognition.start();
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Voice recognition error:', error);
+                    showStatus('Could not start voice recognition. Check microphone permissions.', 'error');
+                }
             }
         }
 
